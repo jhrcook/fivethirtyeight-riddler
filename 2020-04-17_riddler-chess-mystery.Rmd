@@ -5,22 +5,11 @@ date: "4/17/2020"
 output: github_document
 ---
 
-```{r setup, message=FALSE, warning=FALSE}
-knitr::opts_chunk$set(echo = TRUE, comment = "#>")
-
-library(glue)
-library(tidygraph)
-library(ggraph)
-library(tidyverse)
-
-theme_set(theme_minimal())
-```
-
 ## Summary
 
 [*The Riddler*](https://fivethirtyeight.com/tag/the-riddler/) is a weekly puzzle provided by FiveThirtyEight.
 This week's puzzle involves finding the path used by the knight to kill the opposing queen in a game of chess.
-Below, I show how I solved puzzle using two method: a siumulation of the chessboard and by building a graph of the possible paths for the knight.
+Below, I show how I solved puzzle using two methods: a siumulation of the chessboard and by building a graph of the possible paths for the knight.
 The simulations were good, but not solution was found in the first attempt.
 Only after realizing a key insight could the riddle be solved.
 
@@ -41,6 +30,17 @@ https://fivethirtyeight.com/features/can-you-solve-the-chess-mystery/
 ![chessboard](./assets/yan_chess.png)
 
 (The [solution](https://fivethirtyeight.com/features/can-you-beat-the-goat-monty-hall-problem/) is available at the end of the following week's Riddler.)
+
+```{r setup, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+
+library(glue)
+library(tidygraph)
+library(ggraph)
+library(tidyverse)
+
+theme_set(theme_minimal())
+```
 
 ## Simulation method
 

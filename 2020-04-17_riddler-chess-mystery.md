@@ -3,23 +3,12 @@ Riddler: Can You Solve The Chess Mystery?
 Joshua Cook
 4/17/2020
 
-``` r
-knitr::opts_chunk$set(echo = TRUE, comment = "#>")
-
-library(glue)
-library(tidygraph)
-library(ggraph)
-library(tidyverse)
-
-theme_set(theme_minimal())
-```
-
 ## Summary
 
 [*The Riddler*](https://fivethirtyeight.com/tag/the-riddler/) is a
 weekly puzzle provided by FiveThirtyEight. This week’s puzzle involves
 finding the path used by the knight to kill the opposing queen in a game
-of chess. Below, I show how I solved puzzle using two method: a
+of chess. Below, I show how I solved puzzle using two methods: a
 siumulation of the chessboard and by building a graph of the possible
 paths for the knight. The simulations were good, but not solution was
 found in the first attempt. Only after realizing a key insight could the
@@ -47,6 +36,17 @@ riddle be solved.
 (The
 [solution](https://fivethirtyeight.com/features/can-you-beat-the-goat-monty-hall-problem/)
 is available at the end of the following week’s Riddler.)
+
+``` r
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+
+library(glue)
+library(tidygraph)
+library(ggraph)
+library(tidyverse)
+
+theme_set(theme_minimal())
+```
 
 ## Simulation method
 
@@ -258,14 +258,14 @@ play_round()
     #>   move_idx     x     y
     #>      <dbl> <dbl> <dbl>
     #> 1        0     2     8
-    #> 2        1     1     6
+    #> 2        1     3     6
     #> 3        2     2     4
     #> 4        3     4     5
-    #> 5        4     2     6
-    #> 6        5     3     4
-    #> 7        6     5     3
-    #> 8        7     6     5
-    #> 9        8     4     6
+    #> 5        4     3     3
+    #> 6        5     2     5
+    #> 7        6     1     3
+    #> 8        7     3     4
+    #> 9        8     1     5
 
 I also added a simple function to plot the path of the knight. Each step
 is labeled with its place in the sequence.
@@ -679,7 +679,7 @@ for (i in seq(1, n_max)) {
 print(path)
 ```
 
-    #> + 9/34 vertices, named, from ea7d697:
+    #> + 9/34 vertices, named, from e7f77ee:
     #> [1] 7,8 8,6 7,4 6,6 4,5 6,4 4,5 5,3 4,1
 
 ``` r
