@@ -13,6 +13,20 @@ This repository contains my attempts at solving these puzzles.
 
 ## Log
 
+[ Can You Tell When The Snow Started?](https://fivethirtyeight.com/features/can-you-catch-the-free-t-shirt/)
+
+date: 2020-05-09  
+solution: [notebook](2020-05-09_riddler-snow-started.Rmd), [markdown](2020-05-09_riddler-snow-started.md)
+
+![](2020-05-09_riddler-snow-started_files/figure-gfm/unnamed-chunk-11-1.gif)
+
+[Can You Flip Your Way To Freedom?](https://fivethirtyeight.com/features/can-you-flip-your-way-to-freedom/)
+
+date: 2020-05-01  
+solution: [notebook](2020-05-01_riddler-flip-to-freedom.Rmd), [markdown](2020-05-01_riddler-flip-to-freedom.md)
+
+![](2020-05-01_riddler-flip-to-freedom_files/figure-gfm/unnamed-chunk-12-1.png)
+
 [Can You Solve The Chess Mystery?](https://fivethirtyeight.com/features/can-you-solve-the-chess-mystery/)
 
 date: 2020-04-17  
