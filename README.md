@@ -7,6 +7,15 @@ contains my attempts at solving these puzzles.
 
 ## Log
 
+[Can You Solve This Rather Pedestrian
+Puzzle?](https://fivethirtyeight.com/features/can-you-solve-this-rather-pedestrian-puzzle/)
+
+date: 2020-05-17  
+solution: [notebook](2020-05-16_pedestrian-question.Rmd),
+[markdown](2020-05-16_pedestrian-question.md)
+
+![](2020-05-16_pedestrian-question_files/figure-gfm/unnamed-chunk-27-1.png)
+
 [Can You Tell When The Snow
 Started?](https://fivethirtyeight.com/features/can-you-catch-the-free-t-shirt/)
 

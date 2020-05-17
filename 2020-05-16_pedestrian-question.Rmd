@@ -13,11 +13,11 @@ output: github_document
 
 > At the very center of the city lies Riddler City Hall. Its many employees all walk to and from work, and their homes are evenly scattered across the city. The sidewalks they walk along have always been adjacent to the streets — but that may be changing.
 
-![](./assets/original-grid.png)
+<img src="./assets/original-grid.png" width="500">
 
 > Recently, several city hall employees submitted a petition, requesting that the sidewalks should no longer lie alongside the streets. Instead, they want the sidewalks to cut diagonally across the city, connecting nearby street intersections. These proposed sidewalks are represented by the thicker blue lines in the diagram below:
 
-![](./assets/diagonal-grid.png)
+<img src="./assets/diagonal-grid.png" width="500">
 
 > The mayor of Riddler City has tasked you with resolving this dispute in a mathematical manner. She would like you to answer the following question: **What fraction of the city hall employees would have a shorter walk home (that is, to the street intersection nearest to their home) if the city replaced its traditional sidewalks with these diagonal sidewalks?**
 
@@ -36,6 +36,8 @@ library(tidygraph)
 library(tidyverse)
 
 theme_set(theme_minimal())
+
+set.seed(0)
 ```
 
 ## Building the graphs
@@ -46,13 +48,13 @@ The number of rows and columns were derived from this.
 
 ```{r}
 CITY_RADIUS <- 3
-N_BLOCKS <- CITY_RADIUS * 2
+N_BLOCKS <- CITY_RADIUS * 2 + 2
 num_rows <- N_BLOCKS + 1
 num_cols <- num_rows
 ```
 
-I built a simple function help keep the naming of the nodes standardized as the column (x) and row (y) of the node.
-It is first used to locate the town hall.
+I built a simple function `node_name()` to help keep the naming of the nodes standardized as the column (x) and row (y) of the node.
+It is first used to locate the city hall.
 
 ```{r}
 node_name <- function(column_idx, row_idx) {
@@ -65,6 +67,9 @@ TOWN_HALL <- node_name(TOWN_HALL_POS$col, TOWN_HALL_POS$row)
 TOWN_HALL
 ```
 
+I also made a the function `is_in_circle()` that checks if the point made by `col` and `row` are in a circle defined by `center` and `radius`.
+This is used below to trim down a rectangular grid to a circle for the city.
+
 ```{r}
 is_in_circle <- function(center, col, row, radius) {
     sqrt((col - center$col)^2 + (row - center$row)^2) <= radius
@@ -76,18 +81,21 @@ is_in_circle <- memoise::memoise(is_in_circle)
 ### The original sidewalk system
 
 I built the first graph of the original layout of the city in two pieces, first stringing all of the columns of the grid together, and then adding edges for the rows.
-At each step, the two nodes are checked to make sure they both within the circle of the city.
 I plot the intermediate graphs to make this more clear.
+At each step, the two nodes are checked to make sure they are both within the circle of the city.
 
-The first set of for-loops below interate through the rows for each column, adding an edge to the edgelist `el`.
+The first set of for-loops below iterate through the rows for each column, adding an edge to the edgelist `el`.
 
 ```{r}
 el <- tibble()
 
 for (col_idx in seq(1, num_cols)) {
     for (row_idx in seq(1, num_rows - 1)) {
-        if (is_in_circle(TOWN_HALL_POS, col_idx, row_idx, CITY_RADIUS) & 
-            is_in_circle(TOWN_HALL_POS, col_idx, row_idx + 1, CITY_RADIUS)) {
+        
+        check_1 <- is_in_circle(TOWN_HALL_POS, col_idx, row_idx, CITY_RADIUS)
+        check_2 <- is_in_circle(TOWN_HALL_POS, col_idx, row_idx+1, CITY_RADIUS)
+        
+        if (check_1 & check_2) {
             node_a <- node_name(col_idx, row_idx)
             node_b <-node_name(col_idx, row_idx + 1)
             el <- bind_rows(el, tibble(from = node_a, to = node_b))
@@ -96,7 +104,7 @@ for (col_idx in seq(1, num_cols)) {
 }
 ```
 
-Below shows the intermediate graph where only the horizontal connections have been made.
+Below shows the intermediate graph where only the vertical connections have been made.
 
 ```{r, echo=FALSE}
 as_tbl_graph(el, directed = FALSE) %>%
@@ -106,7 +114,7 @@ as_tbl_graph(el, directed = FALSE) %>%
     geom_node_text(aes(label = name), repel = TRUE)
 ```
 
-The same process is followed to add the horiztonal edges of the grid to the edge list.
+The same process is followed to add the horizontal edges of the grid to the edge list.
 
 ```{r}
 for (row_idx in seq(1, num_rows)) {
@@ -139,12 +147,12 @@ city_graph %>%
 
 ### The diagonal sidewalk system
 
-Building the sidewalk graph was a bit different.
+Building the graph for the diagonal layout was a bit different.
 I'm sure there is a more efficient method, but I decided to use a very verbose one.
 It uses two nested for-loops to iterate over each integer value in the grid.
-For each of these nodes, connection to nodes in the middle of the block were made.
+For each of these nodes, connections to nodes in the middle of the block were made.
 Therefore, there are now nodes with 0.5 positions on the grid.
-The many if-statements are there to make sure connections are not byond the limits of the grid (though I don't think they would matter to the final calculation because they would not create faster routes to the middle).
+The many if-statements are there to make sure connections are not made beyond the limits of the grid (though I don't think they would matter to the final calculation because they would not create faster routes to the middle).
 
 ```{r}
 el <- tibble()
@@ -182,7 +190,7 @@ for (col_idx in seq(1, num_cols)) {
 diag_graph <- as_tbl_graph(el, directed = FALSE)
 ```
 
-Thie grid looks similar to the first, but we can also see the new 0.5 nodes.
+The grid looks similar to the first, but we can also see the new 0.5 nodes.
 
 ```{r, echo=FALSE}
 diag_graph %>%
@@ -193,12 +201,12 @@ diag_graph %>%
     labs(title = "Riddler City as a graph with diagonal sidewalks")
 ```
 
-## Measure distance to townhall
+## Measure distance to city hall
 
-Finally, we can measure the distance from each node to the twon hall at the center.
-Note that I do not strictly adhere to the Riddler because I do not run this simulation with people starting part-way along the street, only at intersections. However, I choose to keep this simple for now and it is possible to run a simulation with people scattered random around the square grid and starting thier walk at the closest sidewalk.
+Finally, we can measure the distance from each node to the city hall at the center.
+Note that I do adhere to the Riddler because it asks for the length of the path to the nearest street intersection, which is a node (with an integer values for the name) in the two graphs that have been built.
 
-The distance of the shortest path was measured from every node to the center node usign the `distance()` function from the 'igraph' package.
+The distance of the shortest path was measured from every node to the center node using the `distance()` function from the ['igraph'](https://igraph.org) package.
 
 ```{r}
 original_city_distances <- igraph::distances(city_graph, to = TOWN_HALL)
@@ -207,7 +215,9 @@ diagonal_city_distances <- igraph::distances(diag_graph, to = TOWN_HALL)
 
 These values had to be slightly modified because the length of an edge in the original graph is longer than the edge in the graph with diagonal sidewalks.
 Each edge in the graph of diagonal sidewalks is half of the hypotenuse.
-This value is caluclated below in units of the orignal sidewalk length and multiplied against the lengths of the shortest paths.
+This value is calculated below in units of the original sidewalk length and multiplied against the lengths of the shortest paths.
+
+![](./assets/diagonal-grid-annotated.jpg)
 
 ```{r}
 original_sidewalk_unit <- 1
@@ -218,7 +228,7 @@ diagonal_city_distances <- diagonal_city_distances * diagonal_sidewalk_unit
 ```
 
 Below are the summaries of these distances.
-It seems like, on average, the walking distances were shorter with diagonal sidewalks.
+It seems like, on average, the walking distances were shorter with original sidewalks, but only slightly.
 
 ```{r}
 summary(original_city_distances)
@@ -230,12 +240,13 @@ summary(diagonal_city_distances)
 Below are several ways of visualizing the results.
 
 The first code chunk below "tidy's" the data by creating one tall data frame with the data from both graphs.
+(I don't show the code for the plots as they are relatively standard 'ggplots', but the code is available in the R Markdown notebook linked at the top of the page.)
 
-```{r, echo=FALSE}
+```{r}
 tidy_distance_matrix <- function(mat, name) {
     mat %>%
         as.data.frame() %>%
-        set_names(c("dist_to_townhall")) %>%
+        set_names(c("dist_to_cityhall")) %>%
         rownames_to_column("from") %>%
         as_tibble() %>%
         add_column(city = name)
@@ -250,21 +261,21 @@ walking_dists <- bind_rows(
     ) %>%
     filter(from != !!TOWN_HALL)
 
-walking_dists
+head(walking_dists)
 ```
 
 The plot below just shows a histogram of the walking distances.
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 walking_dists %>%
-    ggplot(aes(dist_to_townhall)) +
-    geom_histogram(aes(fill = city)) +
-    scale_fill_brewer(palette = "Set1") +
+    ggplot(aes(dist_to_cityhall)) +
+    geom_histogram(aes(fill = city), bins = 30) +
+    scale_fill_brewer(palette = "Set2") +
         theme(legend.position = c(0.15, 0.78)) +
-    labs(x = "difference in distance with diagonal sidewalks compared to the original",
-         y = "distance with new sidewalks",
-         title = "Is the new sidewalk system better?",
-         fill = "New path is shorter?")
+    labs(x = "distance to city hall",
+         y = "density",
+         title = "Distribution of walking distances to city hall",
+         fill = "sidewalk layout")
 ```
 
 We can also calculate the difference in the shortest distance from each node on each graph.
@@ -272,7 +283,7 @@ I subtracted the shortest distances on the original sidewalks from those on the 
 
 ```{r}
 diff_walking_dists <- walking_dists %>%
-    pivot_wider(from, names_from = city, values_from = dist_to_townhall) %>%
+    pivot_wider(from, names_from = city, values_from = dist_to_cityhall) %>%
     mutate(dist_diff = diagonal - original)
 
 summary(diff_walking_dists$dist_diff)
@@ -298,14 +309,13 @@ diff_walking_dists %>%
 ```
 
 Below is a histogram of the differences in shortest path lengths for each node.
-By eye, it looks like most data points lie b
-elow 0 on the x-axis.
+By eye, it looks like most data points lie below 0 on the x-axis.
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
 diff_walking_dists %>%
     mutate(shorter = dist_diff < 0) %>%
     ggplot(aes(x = dist_diff)) +
-    geom_histogram(aes(fill = shorter)) +
+    geom_histogram(aes(fill = shorter), bins = 30) +
     geom_vline(xintercept = 0, lty = 2, color = "darkorange1", size = 1.3) +
     scale_fill_brewer(palette = "Set1") +
     theme(legend.position = c(0.15, 0.78)) +
@@ -331,11 +341,14 @@ diff_walking_dists %>%
          color = "New path\nis shorter?")
 ```
 
-## What aobut with a larger city?
+## What about with a larger city?
+
+The Riddler states that the city is very large, so I increased the radius for the simulation and re-ran the same code and generated the same plots.
+In this simulation, city hall is on node (42, 42).
 
 ```{r}
 CITY_RADIUS <- 40
-N_BLOCKS <- CITY_RADIUS * 2
+N_BLOCKS <- CITY_RADIUS * 2 + 2
 num_rows <- N_BLOCKS + 1
 num_cols <- num_rows
 
@@ -410,12 +423,9 @@ big_diag_graph <- as_tbl_graph(el, directed = FALSE)
 ```
 
 
-```{r}
+```{r, echo=FALSE}
 original_city_distances <- igraph::distances(big_city_graph, to = TOWN_HALL) * original_sidewalk_unit
 diagonal_city_distances <- igraph::distances(big_diag_graph, to = TOWN_HALL) * diagonal_sidewalk_unit
-
-summary(original_city_distances)
-summary(diagonal_city_distances)
 ```
 
 ```{r, echo=FALSE}
@@ -429,19 +439,31 @@ walking_dists <- bind_rows(
     filter(from != !!TOWN_HALL)
 
 diff_walking_dists <- walking_dists %>%
-    pivot_wider(from, names_from = city, values_from = dist_to_townhall) %>%
+    pivot_wider(from, names_from = city, values_from = dist_to_cityhall) %>%
     mutate(dist_diff = diagonal - original)
 
 summary(diff_walking_dists$dist_diff)
 ```
 
+The density plot below shows that the distributions of walking distances are pretty much equivalent between the two sidewalk layouts.
+
 ```{r, echo=FALSE}
 walking_dists %>%
-    ggplot(aes(dist_to_townhall)) +
+    ggplot(aes(dist_to_cityhall)) +
     geom_density(aes(color = city, fill = city), alpha = 0.2, size = 2) +
-    scale_fill_brewer(palette = "Set1") +
-    scale_color_brewer(palette = "Set1")
+    scale_fill_brewer(palette = "Set2") +
+    scale_color_brewer(palette = "Set2") +
+    theme(
+        legend.position = c(0.15, 0.8)
+    ) +
+    labs(x = "distance to city hall",
+         y = "density",
+         title = "Distribution of walking distances to city hall",
+         color = "sidewalk layout", fill = "sidewalk layout")
 ```
+
+Taking the difference of the path lengths for each person backs up this initial observation.
+It looks like half of the nodes fall above the 1:1 line, and half fall below.
 
 ```{r, echo=FALSE}
 diff_walking_dists %>%
@@ -455,9 +477,11 @@ diff_walking_dists %>%
     labs(x = "distance with original sidewalks",
          y = "distance with new sidewalks",
          title = "Is the new sidewalk system better?",
+         subtitle = "The orange line indicates where the path lengths are equal",
          color = "New path is shorter?")
 ```
 
+Plotting a histogram of the differences in distance between the two layouts presents the 50:50 split quite clearly.
 
 ```{r, echo=FALSE}
 diff_walking_dists %>%
@@ -473,17 +497,20 @@ diff_walking_dists %>%
          fill = "New path is shorter?")
 ```
 
+Finally, laying out the difference between the distances from each node on their original geographic location shows quite clearly that half of the nodes have a shorter distance to city hall, while the walk for the other half gets longer.
+
 ```{r, echo=FALSE}
 diff_walking_dists %>%
     mutate(x = as.numeric(str_extract(from, "^[:digit:]+(?=,)")),
            y = as.numeric(str_extract(from, "(?<=,)[:digit:]+$")),
            shorter = dist_diff < 0) %>%
     ggplot(aes(x = x, y = y)) +
-    geom_point(aes(color = shorter), size = 2.2) +
+    geom_point(aes(color = shorter), size = 2.0) +
     geom_point(data = tibble(x = TOWN_HALL_POS$col, y = TOWN_HALL_POS$col), 
                color = "black") +
     scale_color_brewer(palette = "Set1") +
     labs(title = "From where are the walking distances shorter with the diagonal sidewalks?",
+         subtitle = "The nodes are arranged in their original geographic location.",
          color = "New path\nis shorter?")
 ```
 
@@ -499,3 +526,12 @@ mean(diff_walking_dists$dist_diff < 0)
 
 **About 50% of employees would now have a shorter walk to work.**
 This makes sense when we think about the use of the diagonal sidewalks as just a rotation of the current grid system.
+The net total would be no change in the average distance walked to city hall.
+
+---
+
+## Acknowledgements
+
+The graphs were made and analyzed with [igraph](https://igraph.org) and [tidygraph](https://tidygraph.data-imaginist.com).
+The graphs were plotted with [ggraph](https://ggraph.data-imaginist.com).
+Repetitive tasks were sped up using the [memoise](https://github.com/r-lib/memoise) package for memoization.
