@@ -1,0 +1,273 @@
+---
+title: "Riddler: Can You Roll The Perfect Bowl?"
+author: "Joshua Cook"
+date: "5/30/2020"
+output: github_document
+---
+
+## FiveThirtyEight's Riddler Express
+
+[link](https://fivethirtyeight.com/features/can-you-roll-the-perfect-bowl/)
+
+> At the recent World Indoor Bowls Championships in Great Yarmouth, England, one of the rolls by Nick Brett went viral. Here it is in all its glory:
+
+<blockquote class="twitter-tweet"><p lang="en" dir="ltr">12/10 on the mindblowing scale 🤯 <a href="https://twitter.com/hashtag/SCtop10?src=hash&amp;ref_src=twsrc%5Etfw">#SCtop10</a><br><br>(via <a href="https://twitter.com/BBCSport?ref_src=twsrc%5Etfw">@BBCSport</a>) <a href="https://t.co/6pN6ybzVel">pic.twitter.com/6pN6ybzVel</a></p>&mdash; SportsCenter (@SportsCenter) <a href="https://twitter.com/SportsCenter/status/1220355057503363072?ref_src=twsrc%5Etfw">January 23, 2020</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+> In order for Nick’s green bowl to split the two red bowls, he needed expert precision in both the speed of the roll and its final angle of approach.
+
+> Suppose you were standing in Nick’s shoes, and you wanted to split two of your opponent’s bowls. Let’s simplify the math a little, and say that each bowl is a sphere with a radius of 1. Let’s further suppose that your opponent’s two red bowls are separated by a distance of 3 — that is, the centers of the red bowls are separated by a distance of 5. Define phi as the angle between the path your bowl is on and the line connecting your opponent’s bowls.
+
+> For example, here’s how you could split your opponent’s bowls when phi is 75 degrees:
+
+![](assets/bowls.gif)
+
+> What is the minimum value of phi that will allow your bowl to split your opponents’ bowls without hitting them?
+
+## Plan
+
+I will approximate the solution to this puzzle by simulating the game from many different angles.
+Thankfully, because the game is vertically and horizontally symmetric, I only need to simulate the green ball reaching the middle point between the red balls and only need to see if it collides with the top red ball.
+
+## Setup
+
+```{r setup, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", cache = TRUE)
+
+library(glue)
+library(clisymbols)
+library(ggforce)
+library(gganimate)
+library(tidyverse)
+
+theme_set(theme_minimal())
+
+green <- "#54c761"
+red <- "#c75454"
+purple <- "#a06bdb"
+light_grey <- "grey70"
+grey <- "grey40"
+
+set.seed(0)
+```
+
+## Simulate a single pass
+
+```{r}
+# Make a green ball location from the x-position and angle.
+make_green_ball <- function(h, angle) {
+    x <- -1 * h * cos(pi/2 - angle)
+    y <- h * sin(pi/2 - angle)
+    list(x = x, y = y)
+}
+```
+
+```{r}
+# Decide wether the two balls of radius `r` collided.
+did_balls_collide <- function(ball1, ball2, radius) {
+    d <- sqrt((ball1$x - ball2$x)^2 + (ball1$y - ball2$y)^2)
+    return(d <= 2*radius)
+}
+```
+
+```{r}
+# Run a simulation of the bowling game.
+run_bowl_simulation <- function(angle, 
+                                step_size = 0.1, 
+                                red_ball_loc = list(x = 0, y = 2.5)) {
+    h_start <- 5
+    h_vals <- seq(h_start, 0, by = -step_size)
+    angle <- angle * (pi / 180)
+    
+    all_ball_pos <- NULL
+    
+    for (h in h_vals) {
+        green_ball <- make_green_ball(h, angle)
+        collision <- did_balls_collide(green_ball, red_ball_loc, radius = 1)
+        all_ball_pos <- bind_rows(
+            all_ball_pos,
+            tibble(h = h, 
+                   x = green_ball$x, 
+                   y = green_ball$y, 
+                   collision = collision)
+        )
+    }
+    return(all_ball_pos)
+}
+```
+
+```{r}
+map(seq(90, 0, -10), run_bowl_simulation, step_size = 0.1) %>%
+    map2(seq(90, 0, -10), ~ .x %>% add_column(angle = .y)) %>%
+    bind_rows() %>%
+    mutate(collision = ifelse(collision, "collision", "safe")) %>%
+    ggplot() +
+    geom_point(aes(x, y, color = collision), size = 2) +
+    geom_circle(aes(x0 = x0, y0 = y0, r = r), 
+                         data = tibble(x0 = 0, y0 = 2.5, r = 1),
+                         color = red, fill = red, alpha = 0.5) +
+    scale_color_manual(values = c(purple, light_grey)) +
+    coord_fixed() +
+    theme(
+        legend.position = c(0.15, 0.9),
+        legend.title = element_blank()
+    ) +
+    labs(x = "x", y = "y", 
+         title = "Example paths of the green ball",
+         subtitle = "For the angles between 0 and 90 at 10 degree intervals.")
+```
+
+```{r}
+# The starting angle.
+angle <- 90
+previous_angle <- angle
+
+# The "learning rate" paramerters.
+angle_delta <- 10
+epsilon <- 0.8
+min_angle_delta <- 0.01
+
+collision <- TRUE
+
+memo_bowl_sim <- memoise::memoise(run_bowl_simulation)
+
+while (angle_delta >= min_angle_delta |collision) {
+    # Run the bowling simulation with the current angle.
+    sim_res <- memo_bowl_sim(angle = angle, step_size = 0.1)
+    
+    # Were there any collisions?
+    collision <- any(sim_res$collision)
+    
+    # Print results
+    msg <- "collision: {ifelse(collision, symbol$cross, symbol$tick)}" %>%
+        paste("{collision},") %>%
+        paste("angle: {round(angle, 4)},") %>%
+        paste(angle_delta: {round(angle_delta, 4)})
+    print(glue(msg))
+    
+    if (!collision) {
+        # Reduce the angle if there is no collision.
+        previous_angle <- angle
+        angle <- angle - angle_delta
+    } else {
+        # Revert to the previous angle and reduce delta if there is a collision.
+        angle_delta <- epsilon * angle_delta
+        angle <- previous_angle
+    }
+}
+```
+
+```{r}
+angle <- 90
+previous_angle <- angle
+
+angle_delta <- 10
+epsilon <- 0.9
+min_angle_delta <- 1e-3
+
+collision <- TRUE
+
+sim_results_tracker <- tibble()
+sim_parameters_tracker <- tibble()
+
+memo_bowl_sim <- memoise::memoise(run_bowl_simulation)
+
+while (angle_delta >= min_angle_delta | collision) {
+    sim_res <- memo_bowl_sim(angle = angle, step_size = 0.01)
+    collision <- any(sim_res$collision)
+    
+    sim_results_tracker <- bind_rows(sim_results_tracker,
+                                     sim_res %>% add_column(angle = angle))
+    
+    sim_parameters_tracker <- bind_rows(sim_parameters_tracker,
+                                        tibble(angle, angle_delta, 
+                                               collision, epsilon))
+    
+    if (!collision) {
+        previous_angle <- angle
+        angle <- angle - angle_delta
+    } else {
+        angle_delta <- epsilon * angle_delta
+        angle <- previous_angle
+    }
+}
+```
+
+Took `r nrow(sim_parameters_tracker)` steps.
+
+```{r}
+sim_parameters_tracker %>%
+    mutate(row_idx = row_number()) %>%
+    pivot_longer(-c(row_idx, epsilon, collision)) %>%
+    ggplot(aes(x = row_idx, y = value)) +
+    facet_wrap(~ name, nrow = 1, scales = "free") +
+    geom_point(aes(color = collision), size = 0.7) + 
+    scale_color_manual(values = c(grey, purple)) +
+    labs(x = "iteration number", y = "value")
+```
+
+```{r}
+sim_results_tracker %>%
+    mutate(collision = ifelse(collision, "collision", "safe")) %>%
+    ggplot() +
+    geom_point(aes(x = x, y = y, color = collision), 
+              size = 0.1) +
+    scale_color_manual(values = c(collision = purple,
+                                  safe = light_grey)) +
+    coord_fixed() +
+    theme(legend.position =  "none") +
+    labs(x = "x", 
+         y = "y", 
+         title = "Paths of the green ball",
+         subtitle = "Points marked in purple were collisions with the red ball.")
+```
+
+```{r}
+smallest_angle <- sim_parameters_tracker %>% 
+    filter(collision == FALSE) %>% 
+    top_n(1, wt = -angle) %>%
+    pull(angle) %>%
+    unique()
+```
+
+**Final angle `r round(smallest_angle, 3)` degrees (`r round(smallest_angle * pi / 180, 3)` in radians).**
+
+```{r}
+final_result <- sim_results_tracker %>%
+    filter(angle == smallest_angle) %>%
+    mutate(row_idx = row_number()) %>%
+    filter(row_idx == 1)
+
+bind_rows(
+    final_result,
+    final_result %>% 
+        mutate(x = -1 * x, y = -1 * y)
+    ) %>%
+    mutate(row_idx = row_number()) %>%
+    ggplot() +
+    geom_point(aes(x, y),
+               color = green, size = 2) +
+    geom_circle(aes(x0 = x, y0 = y, r = 1),
+                         fill = green, alpha = 0.2, size = 0) +
+    geom_point(aes(x, y),
+               data = tibble(x = 0, y = 2.5),
+               color = red, size = 2) +
+    geom_circle(aes(x0 = x, y0 = y, r = 1),
+                data = tibble(x = 0, y = 2.5),
+                fill = red, alpha = 0.2, size = 0) +
+    geom_point(aes(x, y),
+               data = tibble(x = 0, y = -2.5),
+               color = red, size = 2) +
+    geom_circle(aes(x0 = x, y0 = y, r = 1),
+                data = tibble(x = 0, y = -2.5),
+                fill = red, alpha = 0.2, size = 0) +
+    coord_fixed() +
+    labs(
+        x = "x", 
+        y = "y",
+        title = glue(
+             "The tighest angle of the perfect bowl: {round(smallest_angle, 3)} deg."
+    )) +
+    transition_states(row_idx, transition_length = 2, 
+                      state_length = 0, wrap = FALSE) +
+    ease_aes("sine-in-out")
+```
