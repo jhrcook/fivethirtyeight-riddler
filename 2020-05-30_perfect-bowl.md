@@ -71,6 +71,7 @@ library(tidyverse)
 
 theme_set(theme_minimal())
 
+# Some standard colors used throughout
 green <- "#54c761"
 red <- "#c75454"
 purple <- "#a06bdb"
@@ -82,22 +83,22 @@ set.seed(0)
 
 ## Simulate a single pass
 
-``` r
-# Make a green ball location from the x-position and angle.
-make_green_ball <- function(h, angle) {
-    x <- -1 * h * cos(pi/2 - angle)
-    y <- h * sin(pi/2 - angle)
-    list(x = x, y = y)
-}
-```
+I split the code into two pieces. The first simulates a bowl with a
+given angle, and the second decides on the angle to narrow down the
+approximation. The following functions take care of the first part:
+simulating a bowl.
 
-``` r
-# Decide wether the two balls of radius `r` collided.
-did_balls_collide <- function(ball1, ball2, radius) {
-    d <- sqrt((ball1$x - ball2$x)^2 + (ball1$y - ball2$y)^2)
-    return(d <= 2*radius)
-}
-```
+A single simulation can be run by calling `run_bowl_simulation()` with
+an angle (in degrees). The function works by changing the hypotenuse,
+starting with `h_start = 5` and decreasing it to 0 by `step_size` steps
+(the steps are held in the numeric vector `h_vals`). The actual position
+of the ball is calculated from the length of the hypotenuse and angle
+with a bit of trigonometry in `make_green_ball()`. For each hypotenuse
+value, the green ball is positioned and then tested to see if it
+collides with the red ball (set at \((x,y) = (0,2.5)\) as per the
+riddle) using the function `did_balls_collide()`. This information is
+recorded by building a single data frame with the data for each step of
+the simulation. The data frame is returned at the end of the simulation.
 
 ``` r
 # Run a simulation of the bowling game.
@@ -126,6 +127,31 @@ run_bowl_simulation <- function(angle,
 ```
 
 ``` r
+# Make a green ball location from the x-position and angle.
+make_green_ball <- function(h, angle) {
+    x <- -1 * h * cos(pi/2 - angle)
+    y <- h * sin(pi/2 - angle)
+    list(x = x, y = y)
+}
+```
+
+``` r
+# Decide wether the two balls of radius `r` collided.
+did_balls_collide <- function(ball1, ball2, radius) {
+    d <- sqrt((ball1$x - ball2$x)^2 + (ball1$y - ball2$y)^2)
+    return(d <= 2*radius)
+}
+```
+
+Below are the results from running the simulation at angles between 90
+degrees (horizontal) and 0 degrees (vertical) at 10 degree increments.
+Each line is an individual simulation, and each point is a round of the
+simulation. A red ball is positioned as per the riddle, and the purple
+points indicate where the green ball would collide with the red ball.
+These example simulations show that the `run_bowl_simulation()` function
+is working as expected.
+
+``` r
 map(seq(90, 0, -10), run_bowl_simulation, step_size = 0.1) %>%
     map2(seq(90, 0, -10), ~ .x %>% add_column(angle = .y)) %>%
     bind_rows() %>%
@@ -148,6 +174,35 @@ map(seq(90, 0, -10), run_bowl_simulation, step_size = 0.1) %>%
 
 ![](2020-05-30_perfect-bowl_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
 
+## Find the smallest angle
+
+The second part of the code is to find the smallest (narrowest) angle at
+which there is no collision. Instead of trying every angle between 90
+degrees and 0 degrees at some very small increment, I approach this
+problem a bit more efficiently. I built an algorithm than starts at 90
+degrees and takes large steps until there is an angle that causes a
+collision. It then takes a step back an tries again with a progressively
+smaller step, until it no longer collides. This continues with the step
+size getting smaller and smaller. The algorithm stops when the step size
+is small enough for a good approximation and the angle does not cause a
+collision. The code chunk below carries out this process, printing the
+information for each pass.
+
+The purpose of the `angle` and `previous_angle` parameters are fairly
+obvious. The `angle_delta` parameter is the value by which the angle is
+reduced at each step. `epsilon` is used to reduce `angle_delta` when
+there are collisions at an angle. Finally, `min_angle_delta` is one of
+the stopping criteria: when `angle_delta` gets below this value, the
+algorithm is sufficiently close to the correct answer and it stops
+trying new angles. *Thus, this parameter determines the precision of the
+algorithm.* It is set relatively high for now, because this first pass
+is just a demonstration and prints out the results of each iteration.
+
+For efficiency, the while loop uses a memoised version of
+`run_bowl_simulation()` because when the balls collide, the previous
+step is tried again. Therefore, memoising the function saves some time
+instead of running the simulation from the same angle multiple times.
+
 ``` r
 # The starting angle.
 angle <- 90
@@ -155,14 +210,15 @@ previous_angle <- angle
 
 # The "learning rate" paramerters.
 angle_delta <- 10
-epsilon <- 0.8
+epsilon <- 0.5
 min_angle_delta <- 0.01
 
+# Start with TRUE, though it doesn't matter.
 collision <- TRUE
 
 memo_bowl_sim <- memoise::memoise(run_bowl_simulation)
 
-while (angle_delta >= min_angle_delta |collision) {
+while (angle_delta >= min_angle_delta | collision) {
     # Run the bowling simulation with the current angle.
     sim_res <- memo_bowl_sim(angle = angle, step_size = 0.1)
     
@@ -173,7 +229,7 @@ while (angle_delta >= min_angle_delta |collision) {
     msg <- "collision: {ifelse(collision, symbol$cross, symbol$tick)}" %>%
         paste("{collision},") %>%
         paste("angle: {round(angle, 4)},") %>%
-        paste(angle_delta: {round(angle_delta, 4)})
+        paste("angle_delta: {round(angle_delta, 4)}")
     print(glue(msg))
     
     if (!collision) {
@@ -188,83 +244,54 @@ while (angle_delta >= min_angle_delta |collision) {
 }
 ```
 
-    #> collision: ✔ FALSE, angle: 90, 10
-    #> collision: ✔ FALSE, angle: 80, 10
-    #> collision: ✔ FALSE, angle: 70, 10
-    #> collision: ✔ FALSE, angle: 60, 10
-    #> collision: ✖ TRUE, angle: 50, 10
-    #> collision: ✔ FALSE, angle: 60, 8
-    #> collision: ✖ TRUE, angle: 52, 8
-    #> collision: ✔ FALSE, angle: 60, 6.4
-    #> collision: ✔ FALSE, angle: 53.6, 6.4
-    #> collision: ✖ TRUE, angle: 47.2, 6.4
-    #> collision: ✔ FALSE, angle: 53.6, 5.12
-    #> collision: ✖ TRUE, angle: 48.48, 5.12
-    #> collision: ✔ FALSE, angle: 53.6, 4.096
-    #> collision: ✖ TRUE, angle: 49.504, 4.096
-    #> collision: ✔ FALSE, angle: 53.6, 3.2768
-    #> collision: ✖ TRUE, angle: 50.3232, 3.2768
-    #> collision: ✔ FALSE, angle: 53.6, 2.62144
-    #> collision: ✖ TRUE, angle: 50.9786, 2.62144
-    #> collision: ✔ FALSE, angle: 53.6, 2.097152
-    #> collision: ✖ TRUE, angle: 51.5028, 2.097152
-    #> collision: ✔ FALSE, angle: 53.6, 1.6777216
-    #> collision: ✖ TRUE, angle: 51.9223, 1.6777216
-    #> collision: ✔ FALSE, angle: 53.6, 1.34217728
-    #> collision: ✖ TRUE, angle: 52.2578, 1.34217728
-    #> collision: ✔ FALSE, angle: 53.6, 1.073741824
-    #> collision: ✖ TRUE, angle: 52.5263, 1.073741824
-    #> collision: ✔ FALSE, angle: 53.6, 0.8589934592
-    #> collision: ✖ TRUE, angle: 52.741, 0.8589934592
-    #> collision: ✔ FALSE, angle: 53.6, 0.68719476736
-    #> collision: ✖ TRUE, angle: 52.9128, 0.68719476736
-    #> collision: ✔ FALSE, angle: 53.6, 0.549755813888
-    #> collision: ✖ TRUE, angle: 53.0502, 0.549755813888
-    #> collision: ✔ FALSE, angle: 53.6, 0.4398046511104
-    #> collision: ✔ FALSE, angle: 53.1602, 0.4398046511104
-    #> collision: ✖ TRUE, angle: 52.7204, 0.4398046511104
-    #> collision: ✔ FALSE, angle: 53.1602, 0.35184372088832
-    #> collision: ✖ TRUE, angle: 52.8084, 0.35184372088832
-    #> collision: ✔ FALSE, angle: 53.1602, 0.281474976710656
-    #> collision: ✖ TRUE, angle: 52.8787, 0.281474976710656
-    #> collision: ✔ FALSE, angle: 53.1602, 0.225179981368525
-    #> collision: ✖ TRUE, angle: 52.935, 0.225179981368525
-    #> collision: ✔ FALSE, angle: 53.1602, 0.18014398509482
-    #> collision: ✖ TRUE, angle: 52.9801, 0.18014398509482
-    #> collision: ✔ FALSE, angle: 53.1602, 0.144115188075856
-    #> collision: ✖ TRUE, angle: 53.0161, 0.144115188075856
-    #> collision: ✔ FALSE, angle: 53.1602, 0.115292150460685
-    #> collision: ✖ TRUE, angle: 53.0449, 0.115292150460685
-    #> collision: ✔ FALSE, angle: 53.1602, 0.0922337203685479
-    #> collision: ✖ TRUE, angle: 53.068, 0.0922337203685479
-    #> collision: ✔ FALSE, angle: 53.1602, 0.0737869762948383
-    #> collision: ✖ TRUE, angle: 53.0864, 0.0737869762948383
-    #> collision: ✔ FALSE, angle: 53.1602, 0.0590295810358706
-    #> collision: ✖ TRUE, angle: 53.1012, 0.0590295810358706
-    #> collision: ✔ FALSE, angle: 53.1602, 0.0472236648286965
-    #> collision: ✖ TRUE, angle: 53.113, 0.0472236648286965
-    #> collision: ✔ FALSE, angle: 53.1602, 0.0377789318629572
-    #> collision: ✖ TRUE, angle: 53.1224, 0.0377789318629572
-    #> collision: ✔ FALSE, angle: 53.1602, 0.0302231454903658
-    #> collision: ✖ TRUE, angle: 53.13, 0.0302231454903658
-    #> collision: ✔ FALSE, angle: 53.1602, 0.0241785163922926
-    #> collision: ✔ FALSE, angle: 53.136, 0.0241785163922926
-    #> collision: ✖ TRUE, angle: 53.1118, 0.0241785163922926
-    #> collision: ✔ FALSE, angle: 53.136, 0.0193428131138341
-    #> collision: ✖ TRUE, angle: 53.1167, 0.0193428131138341
-    #> collision: ✔ FALSE, angle: 53.136, 0.0154742504910673
-    #> collision: ✖ TRUE, angle: 53.1205, 0.0154742504910673
-    #> collision: ✔ FALSE, angle: 53.136, 0.0123794003928538
-    #> collision: ✖ TRUE, angle: 53.1236, 0.0123794003928538
-    #> collision: ✔ FALSE, angle: 53.136, 0.00990352031428306
+    #> collision: ✔ FALSE, angle: 90, angle_delta: 10
+    #> collision: ✔ FALSE, angle: 80, angle_delta: 10
+    #> collision: ✔ FALSE, angle: 70, angle_delta: 10
+    #> collision: ✔ FALSE, angle: 60, angle_delta: 10
+    #> collision: ✖ TRUE, angle: 50, angle_delta: 10
+    #> collision: ✔ FALSE, angle: 60, angle_delta: 5
+    #> collision: ✔ FALSE, angle: 55, angle_delta: 5
+    #> collision: ✖ TRUE, angle: 50, angle_delta: 5
+    #> collision: ✔ FALSE, angle: 55, angle_delta: 2.5
+    #> collision: ✖ TRUE, angle: 52.5, angle_delta: 2.5
+    #> collision: ✔ FALSE, angle: 55, angle_delta: 1.25
+    #> collision: ✔ FALSE, angle: 53.75, angle_delta: 1.25
+    #> collision: ✖ TRUE, angle: 52.5, angle_delta: 1.25
+    #> collision: ✔ FALSE, angle: 53.75, angle_delta: 0.625
+    #> collision: ✖ TRUE, angle: 53.125, angle_delta: 0.625
+    #> collision: ✔ FALSE, angle: 53.75, angle_delta: 0.3125
+    #> collision: ✔ FALSE, angle: 53.4375, angle_delta: 0.3125
+    #> collision: ✖ TRUE, angle: 53.125, angle_delta: 0.3125
+    #> collision: ✔ FALSE, angle: 53.4375, angle_delta: 0.1562
+    #> collision: ✔ FALSE, angle: 53.2812, angle_delta: 0.1562
+    #> collision: ✖ TRUE, angle: 53.125, angle_delta: 0.1562
+    #> collision: ✔ FALSE, angle: 53.2812, angle_delta: 0.0781
+    #> collision: ✔ FALSE, angle: 53.2031, angle_delta: 0.0781
+    #> collision: ✖ TRUE, angle: 53.125, angle_delta: 0.0781
+    #> collision: ✔ FALSE, angle: 53.2031, angle_delta: 0.0391
+    #> collision: ✔ FALSE, angle: 53.1641, angle_delta: 0.0391
+    #> collision: ✖ TRUE, angle: 53.125, angle_delta: 0.0391
+    #> collision: ✔ FALSE, angle: 53.1641, angle_delta: 0.0195
+    #> collision: ✔ FALSE, angle: 53.1445, angle_delta: 0.0195
+    #> collision: ✖ TRUE, angle: 53.125, angle_delta: 0.0195
+    #> collision: ✔ FALSE, angle: 53.1445, angle_delta: 0.0098
+
+From the print-out above, we can see how the algorithm jumps back an
+forth, narrowing in on a solution around 53 degrees.
+
+With that successful proof-of-concept, the following code runs the
+algorithm with a smaller `min_angle_delta = 1e-5` to achieve greater
+precision. Instead of printing out the results of each iteration, the
+simulation results and parameters are saved to `sim_results_tracker` and
+`sim_parameters_tracker`, respectively, and are inspected below.
 
 ``` r
 angle <- 90
 previous_angle <- angle
 
 angle_delta <- 10
-epsilon <- 0.9
-min_angle_delta <- 1e-3
+epsilon <- 0.7
+min_angle_delta <- 1e-5
 
 collision <- TRUE
 
@@ -294,20 +321,27 @@ while (angle_delta >= min_angle_delta | collision) {
 }
 ```
 
-Took 183 steps.
+The simulation took 89 steps. The plot below shows the angle and
+`angle_delta` at each step, colored by whether there was a collision or
+not.
 
 ``` r
 sim_parameters_tracker %>%
     mutate(row_idx = row_number()) %>%
     pivot_longer(-c(row_idx, epsilon, collision)) %>%
     ggplot(aes(x = row_idx, y = value)) +
-    facet_wrap(~ name, nrow = 1, scales = "free") +
-    geom_point(aes(color = collision), size = 0.7) + 
-    scale_color_manual(values = c(grey, purple)) +
-    labs(x = "iteration number", y = "value")
+    facet_wrap(~ name, nrow = 2, scales = "free") +
+    geom_point(aes(color = collision), size = 0.9) + 
+    scale_color_manual(values = c(light_grey, purple)) +
+    labs(x = "iteration number", 
+         y = "value",
+         title = "Simulation parameters")
 ```
 
 ![](2020-05-30_perfect-bowl_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+
+The following plot shows each of the paths tried, again, coloring the
+locations of collisions in purple.
 
 ``` r
 sim_results_tracker %>%
@@ -327,6 +361,9 @@ sim_results_tracker %>%
 
 ![](2020-05-30_perfect-bowl_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
 
+Finally, we can find the approximated angle by taking the smallest angle
+tried in the rounds of simulation that did not have any collisions.
+
 ``` r
 smallest_angle <- sim_parameters_tracker %>% 
     filter(collision == FALSE) %>% 
@@ -335,7 +372,10 @@ smallest_angle <- sim_parameters_tracker %>%
     unique()
 ```
 
-**Final angle 53.13 degrees (0.927 in radians).**
+**The algorithm approximates the solution to be: 53.1301 degrees (0.9273
+in radians).**
+
+The simulation with this angle is shown in an animated plot below.
 
 ``` r
 final_result <- sim_results_tracker %>%
@@ -345,37 +385,48 @@ final_result <- sim_results_tracker %>%
 
 bind_rows(
     final_result,
-    final_result %>% 
+    final_result %>%
         mutate(x = -1 * x, y = -1 * y)
-    ) %>%
+) %>%
     mutate(row_idx = row_number()) %>%
     ggplot() +
-    geom_point(aes(x, y),
+    geom_point(aes(x = x, y = y),
                color = green, size = 2) +
     geom_circle(aes(x0 = x, y0 = y, r = 1),
-                         fill = green, alpha = 0.2, size = 0) +
+                fill = green, alpha = 0.2, size = 0) +
     geom_point(aes(x, y),
                data = tibble(x = 0, y = 2.5),
                color = red, size = 2) +
-    geom_circle(aes(x0 = x, y0 = y, r = 1),
-                data = tibble(x = 0, y = 2.5),
+    geom_circle(aes(x0 = x, y0 = y, r = r),
+                data = tibble(x = 0, y = 2.5, r = 1),
                 fill = red, alpha = 0.2, size = 0) +
     geom_point(aes(x, y),
                data = tibble(x = 0, y = -2.5),
                color = red, size = 2) +
-    geom_circle(aes(x0 = x, y0 = y, r = 1),
-                data = tibble(x = 0, y = -2.5),
+    geom_circle(aes(x0 = x, y0 = y, r = r),
+                data = tibble(x = 0, y = -2.5, r = 1),
                 fill = red, alpha = 0.2, size = 0) +
     coord_fixed() +
     labs(
-        x = "x", 
+        x = "x",
         y = "y",
         title = glue(
-             "The tighest angle of the perfect bowl: {round(smallest_angle, 3)} deg."
+             "The tightest angle of the perfect bowl: {round(smallest_angle, 3)} deg."
     )) +
-    transition_states(row_idx, transition_length = 2, 
+    transition_states(row_idx, transition_length = 2,
                       state_length = 0, wrap = FALSE) +
     ease_aes("sine-in-out")
 ```
 
 ![](2020-05-30_perfect-bowl_files/figure-gfm/unnamed-chunk-10-1.gif)<!-- -->
+
+-----
+
+## Acknowledgements
+
+Repetitive tasks were sped up using the
+[‘memoise’](https://github.com/r-lib/memoise) package for
+memoization. Plotting was accomplished using
+[‘ggplot2’](https://ggplot2.tidyverse.org),
+[‘ggforce’](https://ggforce.data-imaginist.com), and
+[‘gganimate’](https://gganimate.com).
