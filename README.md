@@ -7,6 +7,15 @@ contains my attempts at solving these puzzles.
 
 ## Log
 
+[Can You Track The Delirious
+Ducks??](https://fivethirtyeight.com/features/can-you-track-the-delirious-ducks/)
+
+date: 2020-06-13  
+solution: [notebook](2020-06-13_delirious-duck.Rmd),
+[markdown](2020-06-13_delirious-duck.md)
+
+![](2020-06-13_delirious-duck_files/figure-gfm/unnamed-chunk-14-1.png)
+
 [Can You Solve This Rather Pedestrian
 Puzzle?](https://fivethirtyeight.com/features/can-you-solve-this-rather-pedestrian-puzzle/)
 
