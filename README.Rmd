@@ -13,6 +13,15 @@ This repository contains my attempts at solving these puzzles.
 
 ## Log
 
+[Can You Just Keep Turning?](https://fivethirtyeight.com/features/can-you-connect-the-dots/)
+
+date: 2020-06-27  
+solution: [notebook](2020-06-27_just-keep-turning.Rmd), [markdown](2020-06-27_just-keep-turning.md)
+
+![](2020-06-27_just-keep-turning_files/figure-gfm/unnamed-chunk-10-1.png)
+
+
+
 [Can You Solve the Not-So-Corn Maze?](https://fivethirtyeight.com/features/can-you-break-the-riddler-bank/)
 
 date: 2020-06-20  
