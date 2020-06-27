@@ -7,14 +7,32 @@ contains my attempts at solving these puzzles.
 
 ## Log
 
+[Can You Solve the Not-So-Corn
+Maze?](https://fivethirtyeight.com/features/can-you-break-the-riddler-bank/)
+
+date: 2020-06-20  
+solution: [notebook](2020-06-20_not-so-corn-maze.Rmd),
+[markdown](2020-06-20_not-so-corn-maze.md)
+
+![](2020-06-20_not-so-corn-maze_files/figure-gfm/unnamed-chunk-7-1.png)
+
 [Can You Track The Delirious
-Ducks??](https://fivethirtyeight.com/features/can-you-track-the-delirious-ducks/)
+Ducks?](https://fivethirtyeight.com/features/can-you-track-the-delirious-ducks/)
 
 date: 2020-06-13  
 solution: [notebook](2020-06-13_delirious-duck.Rmd),
 [markdown](2020-06-13_delirious-duck.md)
 
 ![](2020-06-13_delirious-duck_files/figure-gfm/unnamed-chunk-14-1.png)
+
+[Can You Roll The Perfect
+Bowl?](https://fivethirtyeight.com/features/can-you-roll-the-perfect-bowl/)
+
+date: 2020-05-30  
+solution: [notebook](2020-05-30_perfect-bowl.Rmd),
+[markdown](2020-05-30_perfect-bowl.md)
+
+![](2020-05-30_perfect-bowl_files/figure-gfm/unnamed-chunk-10-1.gif)
 
 [Can You Solve This Rather Pedestrian
 Puzzle?](https://fivethirtyeight.com/features/can-you-solve-this-rather-pedestrian-puzzle/)
