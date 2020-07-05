@@ -5,6 +5,8 @@ date: "6/27/2020"
 output: github_document
 ---
 
+<span style="color=#88a8bd">*The following article has been updated to fix an error identified by several readers. Thank you for your help!*<\span>
+
 ## FiveThirtyEight's Riddler Express
 
 [link](https://fivethirtyeight.com/features/can-you-connect-the-dots/)
@@ -29,6 +31,7 @@ I will try to make the algorithm generalizable to also be able to solve the extr
 ```{r setup, message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE, comment = "#>", cache = TRUE, dpi = 400)
 
+library(mustashe)
 library(tidyverse)
 library(conflicted)
 
@@ -285,13 +288,17 @@ With that check done, we are ready to run a few thousand simulations.
 set.seed(0)
 N_sims <- 1e4
 
-simulation_results <- tibble(sim = 1:N_sims) %>%
-    mutate(res = map(sim, ~ simulate_one_drive(0.5, 0.5, 0, n_steps = 10)))
+stash("simulation_results", depends_on = "N_sims", {
+    simulation_results <- tibble(sim = 1:N_sims) %>%
+        mutate(res = map(
+            sim, ~ simulate_one_drive(0.5, 0.5, 0, n_steps = 10))
+        )
+})
 
 simulation_results
 ```
 
-Now we have a long data frame with nested data frames, each one respresenting the results of a single simulation.
+Now we have a long data frame with nested data frames, each one representing the results of a single simulation.
 We now want to tell if the final direction was pointing north.
 However, there is one subtle problem: $\frac{\pi}{2} = \frac{5\pi}{2} = \frac{9\pi}{2} = ...$.
 There are many (infinite) possible angles that all point north.
@@ -312,8 +319,24 @@ simulation_results <- simulation_results %>%
     filter(i == 10) %>%
     mutate(reduced_direction = reduce_angle(direction))
 
-prob_north <- sum(simulation_results$reduced_direction == 0.5) / N_sims
+prob_north <- sum(simulation_results$reduced_direction %in% c(0.5, -1.5)) / N_sims
 ```
+
+```{r}
+is_north_pal <- c("TRUE" = "#5887db", "FALSE" = "#a7bfeb")
+
+simulation_results %>%
+    count(reduced_direction) %>%
+    mutate(is_north = reduced_direction %in% c(0.5, -1.5)) %>%
+    ggplot(aes(x = factor(reduced_direction), y = n)) +
+    geom_col(aes(fill = is_north)) +
+    scale_fill_manual(values = is_north_pal, guide = FALSE) +
+    labs(x = "final direction (reduced to the range of [-2, 2])",
+         y = "count",
+         title = "The distribution of final directions in the simulation",
+         subtitle = "The highlighted columns represent angles pointing north.")
+```
+
 
 **The probability of still facing north after randomly turning left and right at each intersection is `r round(prob_north, 3)`.**
 
@@ -336,13 +359,30 @@ tibble(sim = 1:5) %>%
 ```{r}
 set.seed(0)
 
-simulation_results <- tibble(sim = 1:N_sims) %>%
-    mutate(res = map(sim, ~ simulate_one_drive(1/3, 1/3, 1/3, n_steps = 10))) %>%
-    unnest(res) %>%
-    filter(i == 10) %>%
-    mutate(reduced_direction = reduce_angle(direction))
+stash("simulation_results_ec", depends_on = "N_sims", {
+    simulation_results_ec <- tibble(sim = 1:N_sims) %>%
+        mutate(res = map(
+            sim, ~ simulate_one_drive(1/3, 1/3, 1/3, n_steps = 10))
+        ) %>%
+        unnest(res) %>%
+        filter(i == 10) %>%
+        mutate(reduced_direction = reduce_angle(direction))
+})
 
-prob_north <- sum(simulation_results$reduced_direction == 0.5) / N_sims
+prob_north <- sum(simulation_results_ec$reduced_direction %in% c(0.5, -1.5)) / N_sims
 ```
 
 **The probability of still facing north after randomly turning left, right, or continuing straight at each intersection is `r round(prob_north, 3)`.**
+
+```{r}
+simulation_results_ec %>%
+    count(reduced_direction) %>%
+    mutate(is_north = reduced_direction %in% c(0.5, -1.5)) %>%
+    ggplot(aes(x = factor(reduced_direction), y = n)) +
+    geom_col(aes(fill = is_north)) +
+    scale_fill_manual(values = is_north_pal, guide = FALSE) +
+    labs(x = "final direction (reduced to the range of [-2, 2])",
+         y = "count",
+         title = "The distribution of final directions in the extra credit simulation",
+         subtitle = "The highlighted columns represent angles pointing north.")
+```
