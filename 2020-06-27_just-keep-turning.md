@@ -3,9 +3,9 @@ Riddler: Can You Just Keep Turning?
 Joshua Cook
 6/27/2020
 
-<span style="color=#88a8bd">*The following article has been updated to
+*<span style="color:#e36f6f">The following article has been updated to
 fix an error identified by several readers. Thank you for your
-help\!*\<\>
+help\!</span>*
 
 ## FiveThirtyEight’s Riddler Express
 
@@ -35,7 +35,7 @@ too many changes.
 ## Setup
 
 ``` r
-knitr::opts_chunk$set(echo = TRUE, comment = "#>", cache = TRUE, dpi = 400)
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", cache = FALSE, dpi = 400)
 
 library(mustashe)
 library(tidyverse)
@@ -424,6 +424,9 @@ simulation_results <- simulation_results %>%
 prob_north <- sum(simulation_results$reduced_direction %in% c(0.5, -1.5)) / N_sims
 ```
 
+**The probability of still facing north after randomly turning left and
+right at each intersection is 0.495.**
+
 ``` r
 is_north_pal <- c("TRUE" = "#5887db", "FALSE" = "#a7bfeb")
 
@@ -440,9 +443,6 @@ simulation_results %>%
 ```
 
 ![](2020-06-27_just-keep-turning_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
-
-**The probability of still facing north after randomly turning left and
-right at each intersection is 0.495.**
 
 ## Extra credit
 

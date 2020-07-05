@@ -5,7 +5,9 @@ date: "6/27/2020"
 output: github_document
 ---
 
-<span style="color=#88a8bd">*The following article has been updated to fix an error identified by several readers. Thank you for your help!*<\span>
+*<span style="color:#e36f6f">The following article has been updated to
+fix an error identified by several readers. Thank you for your
+help!</span>*
 
 ## FiveThirtyEight's Riddler Express
 
@@ -29,7 +31,7 @@ I will try to make the algorithm generalizable to also be able to solve the extr
 ## Setup
 
 ```{r setup, message=FALSE, warning=FALSE}
-knitr::opts_chunk$set(echo = TRUE, comment = "#>", cache = TRUE, dpi = 400)
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", cache = FALSE, dpi = 400)
 
 library(mustashe)
 library(tidyverse)
@@ -322,6 +324,8 @@ simulation_results <- simulation_results %>%
 prob_north <- sum(simulation_results$reduced_direction %in% c(0.5, -1.5)) / N_sims
 ```
 
+**The probability of still facing north after randomly turning left and right at each intersection is `r round(prob_north, 3)`.**
+
 ```{r}
 is_north_pal <- c("TRUE" = "#5887db", "FALSE" = "#a7bfeb")
 
@@ -336,9 +340,6 @@ simulation_results %>%
          title = "The distribution of final directions in the simulation",
          subtitle = "The highlighted columns represent angles pointing north.")
 ```
-
-
-**The probability of still facing north after randomly turning left and right at each intersection is `r round(prob_north, 3)`.**
 
 ## Extra credit
 
