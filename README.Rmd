@@ -13,6 +13,15 @@ This repository contains my attempts at solving these puzzles.
 
 ## Log
 
+[Can You Beat MLB Recods?](https://fivethirtyeight.com/features/can-you-connect-the-dots/)
+
+date: 2020-07-18  
+solution: [notebook](2020-07-18_beat-mlb-records.Rmd), [markdown](2020-07-18_beat-mlb-records.md)
+
+![](2020-07-18_beat-mlb-records_files/figure-gfm/unnamed-chunk-8-1.png)
+
+
+
 [Can You Just Keep Turning?](https://fivethirtyeight.com/features/can-you-connect-the-dots/)
 
 date: 2020-06-27  
